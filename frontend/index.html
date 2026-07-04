@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Finance Assistant - Chat (Standalone)</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --accent: #4f7cff;
+    --text: #e8eaf0;
+    --muted: #8b8f9a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .app { width: 100%; max-width: 640px; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  #log {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 16px;
+    height: 440px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+  }
+  .msg { margin-bottom: 14px; line-height: 1.45; font-size: 14px; }
+  .msg .role { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 3px; }
+  .msg.user .role { color: var(--accent); }
+  form { display: flex; gap: 8px; }
+  input {
+    flex: 1;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #2a2e38;
+    background: var(--panel);
+    color: var(--text);
+    font-size: 14px;
+  }
+  input:focus { outline: 2px solid var(--accent); }
+  button {
+    padding: 12px 18px;
+    border-radius: 10px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .suggestions button {
+    background: var(--panel);
+    border: 1px solid #2a2e38;
+    color: var(--text);
+    font-weight: 400;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>💬 Finance Assistant (Standalone)</h1>
+  <div class="subtitle">No external API — rule-based NLP running entirely on your own backend.</div>
+
+  <div class="suggestions">
+    <button type="button" onclick="ask('How much have I spent on groceries this month?')">Groceries spend?</button>
+    <button type="button" onclick="ask('Am I over budget anywhere?')">Over budget?</button>
+    <button type="button" onclick="ask('What is my net savings this month?')">Net savings?</button>
+    <button type="button" onclick="ask('Where do I spend the most?')">Top merchants?</button>
+    <button type="button" onclick="ask('What can you do?')">Help</button>
+  </div>
+
+  <div id="log"></div>
+
+  <form id="form">
+    <input id="input" placeholder="Ask a question about your finances..." autocomplete="off" />
+    <button type="submit" id="send">Send</button>
+  </form>
+</div>
+
+<script>
+  // Relative path — works whether this page is opened locally or served
+  // by the same backend that's deployed online.
+  const API_URL = "/chat";
+
+  const log = document.getElementById("log");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+
+  function addMessage(role, text) {
+    const div = document.createElement("div");
+    div.className = "msg " + role;
+    div.innerHTML = `<div class="role">${role}</div><div>${text}</div>`;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  async function sendMessage(text) {
+    addMessage("user", text);
+    input.value = "";
+    sendBtn.disabled = true;
+    addMessage("assistant", "…");
+    const thinkingNode = log.lastChild;
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json();
+      thinkingNode.querySelector("div:last-child").innerText = data.reply;
+    } catch (err) {
+      thinkingNode.querySelector("div:last-child").innerText =
+        "Error contacting backend. Is it running on localhost:8000?";
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  function ask(text) { sendMessage(text); }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (input.value.trim()) sendMessage(input.value.trim());
+  });
+</script>
+</body>
+</html>
